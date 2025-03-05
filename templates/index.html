@@ -98,9 +98,23 @@
 
                     <!-- Story Maker Tab -->
                     <div class="tab-pane fade" id="story" role="tabpanel">
+                        <div class="card shadow-lg mb-4">
+                            <div class="card-body">
+                                <h3 class="mb-4">Available Characters</h3>
+                                <div class="row" id="characterGallery">
+                                    <!-- Character cards will be dynamically inserted here -->
+                                </div>
+                                <button class="btn btn-primary mt-3" id="loadCharactersBtn">
+                                    <i class="fas fa-sync me-2"></i>Load New Characters
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="card shadow-lg">
                             <div class="card-body">
                                 <form id="storyForm">
+                                    <input type="hidden" name="selected_image_id" id="selectedImageId">
+
                                     <div class="mb-4">
                                         <label for="conflict" class="form-label">
                                             <i class="fas fa-bolt me-2"></i>Primary Conflict

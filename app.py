@@ -105,10 +105,14 @@ def generate_post():
         # Generate Instagram caption with custom hashtags
         caption = generate_instagram_post(analysis, hashtag_collection.hashtags)
 
+        # Extract character traits from the analysis
+        character_traits = analysis.get('character_traits', [])
+
         # Store the analysis in database
         image_analysis = ImageAnalysis(
             image_url=image_url,
             analysis_result=analysis,
+            character_traits=character_traits,
             instruction_id=instruction.id,
             hashtag_collection_id=hashtag_collection.id
         )
@@ -133,12 +137,29 @@ def generate_story_route():
         setting = request.form.get('setting')
         narrative_style = request.form.get('narrative_style')
         mood = request.form.get('mood')
+        selected_image_id = request.form.get('selected_image_id')
 
         # Get custom inputs if provided
         custom_conflict = request.form.get('custom_conflict')
         custom_setting = request.form.get('custom_setting')
         custom_narrative = request.form.get('custom_narrative')
         custom_mood = request.form.get('custom_mood')
+
+        # Get the selected image's data if provided
+        selected_image = None
+        if selected_image_id:
+            selected_image = ImageAnalysis.query.get(selected_image_id)
+            if selected_image:
+                # Add character information to the story generation
+                character_info = {
+                    'name': selected_image.analysis_result.get('name', ''),
+                    'traits': selected_image.character_traits,
+                    'description': selected_image.analysis_result.get('style', '')
+                }
+            else:
+                character_info = None
+        else:
+            character_info = None
 
         # Generate the story
         result = generate_story(
@@ -149,7 +170,8 @@ def generate_story_route():
             custom_conflict=custom_conflict,
             custom_setting=custom_setting,
             custom_narrative=custom_narrative,
-            custom_mood=custom_mood
+            custom_mood=custom_mood,
+            character_info=character_info
         )
 
         # Store the generated story in database
@@ -160,6 +182,11 @@ def generate_story_route():
             mood=result['mood'],
             generated_story=result['story']
         )
+
+        # If an image was selected, associate it with the story
+        if selected_image:
+            story.images.append(selected_image)
+
         db.session.add(story)
         db.session.commit()
 
@@ -170,6 +197,66 @@ def generate_story_route():
 
     except Exception as e:
         logger.error(f"Error generating story: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_random_images', methods=['GET'])
+def get_random_images():
+    """Get 3 random images from the database with their analysis"""
+    try:
+        # Get 3 random images from the database
+        images = ImageAnalysis.query.order_by(db.func.random()).limit(3).all()
+
+        image_data = []
+        for img in images:
+            analysis = img.analysis_result
+            image_data.append({
+                'id': img.id,
+                'image_url': img.image_url,
+                'name': analysis.get('name', ''),
+                'style': analysis.get('style', ''),
+                'story': analysis.get('story', ''),
+                'character_traits': img.character_traits or []
+            })
+
+        return jsonify({
+            'success': True,
+            'images': image_data
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting random images: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/reroll_image/<int:index>', methods=['GET'])
+def reroll_image(index):
+    """Get a new random image to replace one at the specified index"""
+    try:
+        # Get a random image excluding those that might be currently displayed
+        excluded_ids = request.args.getlist('excluded_ids[]', type=int)
+        image = ImageAnalysis.query.filter(
+            ~ImageAnalysis.id.in_(excluded_ids)
+        ).order_by(db.func.random()).first()
+
+        if not image:
+            return jsonify({'error': 'No more images available'}), 404
+
+        analysis = image.analysis_result
+        image_data = {
+            'id': image.id,
+            'image_url': image.image_url,
+            'name': analysis.get('name', ''),
+            'style': analysis.get('style', ''),
+            'story': analysis.get('story', ''),
+            'character_traits': image.character_traits or []
+        }
+
+        return jsonify({
+            'success': True,
+            'image': image_data
+        })
+
+    except Exception as e:
+        logger.error(f"Error rerolling image: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import os
-import openai
+from openai import OpenAI
 import logging
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
     logger.warning("OpenAI API key not found in environment variables")
+
+# Initialize OpenAI client
+client = OpenAI(api_key=api_key)
 
 # Default story options
 STORY_OPTIONS = {
@@ -47,12 +50,13 @@ def generate_story(
     setting: str,
     narrative_style: str,
     mood: str,
+    character_info: Optional[Dict[str, Any]] = None,
     custom_conflict: Optional[str] = None,
     custom_setting: Optional[str] = None,
     custom_narrative: Optional[str] = None,
     custom_mood: Optional[str] = None
 ) -> Dict[str, str]:
-    """Generate a story based on selected or custom parameters"""
+    """Generate a story based on selected or custom parameters and optional character info"""
     if not api_key:
         raise ValueError("OpenAI API key not found. Please add it to your environment variables.")
 
@@ -63,11 +67,20 @@ def generate_story(
     final_mood = custom_mood or mood
 
     # Build the story prompt
+    character_prompt = ""
+    if character_info:
+        character_prompt = (
+            f"\nInclude the character '{character_info['name']}' in the story. "
+            f"This character has the following traits: {', '.join(character_info['traits'])}. "
+            f"Their appearance is described as: {character_info['description']}"
+        )
+
     prompt = (
         f"Primary Conflict: {final_conflict}\n"
         f"Setting: {final_setting}\n"
         f"Narrative Style: {final_narrative}\n"
-        f"Mood: {final_mood}\n\n"
+        f"Mood: {final_mood}\n"
+        f"{character_prompt}\n\n"
         "Tell a story set on Uncle Mark's forest farm with vivid descriptions of every scene and character. "
         "Include Pawel and Pawleen, the fearless Yorkshire terriers, who face off against mean squirrels and a cunning rat wizard. "
         "Make sure to mention the quirky chickens led by Big Red, the clever hens, and the clumsy white turkeys. "
@@ -76,8 +89,8 @@ def generate_story(
     )
 
     try:
-        # Call OpenAI API to generate the story
-        response = openai.ChatCompletion.create(
+        # Call OpenAI API to generate the story using new client syntax
+        response = client.chat.completions.create(
             model="gpt-4o",  # Using the latest model as of May 13, 2024
             messages=[
                 {
@@ -96,7 +109,7 @@ def generate_story(
         )
 
         # Parse and return the generated story
-        result = response.choices[0].message.content
+        result = json.loads(response.choices[0].message.content)
         return {
             "story": result,
             "conflict": final_conflict,

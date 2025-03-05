@@ -97,4 +97,112 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(() => showNotification('Error', 'Failed to copy story', false));
         });
     }
+
+    function createCharacterCard(image, index) {
+        return `
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <img src="${image.image_url}" class="card-img-top" alt="${image.name}" style="height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title">${image.name}</h5>
+                        <p class="card-text small">${image.style}</p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Character Traits: ${image.character_traits.join(', ')}
+                            </small>
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
+                                <i class="fas fa-dice me-1"></i>Reroll
+                            </button>
+                            <button class="btn btn-outline-success btn-sm select-btn" data-id="${image.id}">
+                                <i class="fas fa-check me-1"></i>Select
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    let currentImages = [];
+
+    async function loadRandomCharacters() {
+        try {
+            const response = await fetch('/get_random_images');
+            const data = await response.json();
+
+            if (response.ok) {
+                currentImages = data.images;
+                const gallery = document.getElementById('characterGallery');
+                gallery.innerHTML = currentImages.map((img, index) => createCharacterCard(img, index)).join('');
+
+                // Add event listeners to the new cards
+                document.querySelectorAll('.reroll-btn').forEach(btn => {
+                    btn.addEventListener('click', handleReroll);
+                });
+
+                document.querySelectorAll('.select-btn').forEach(btn => {
+                    btn.addEventListener('click', handleSelect);
+                });
+            } else {
+                showNotification('Error', data.error || 'Failed to load characters', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while loading characters', false);
+        }
+    }
+
+    async function handleReroll(event) {
+        const button = event.currentTarget;
+        const index = parseInt(button.dataset.index);
+        const excludedIds = currentImages.map(img => img.id);
+
+        try {
+            const params = new URLSearchParams();
+            excludedIds.forEach(id => params.append('excluded_ids[]', id));
+
+            const response = await fetch(`/reroll_image/${index}?${params.toString()}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                currentImages[index] = data.image;
+                const cardContainer = button.closest('.col-md-4');
+                cardContainer.outerHTML = createCharacterCard(data.image, index);
+
+                // Reattach event listeners
+                const newCard = document.querySelector(`[data-index="${index}"]`).closest('.col-md-4');
+                newCard.querySelector('.reroll-btn').addEventListener('click', handleReroll);
+                newCard.querySelector('.select-btn').addEventListener('click', handleSelect);
+            } else {
+                showNotification('Error', data.error || 'Failed to reroll character', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while rerolling character', false);
+        }
+    }
+
+    function handleSelect(event) {
+        const button = event.currentTarget;
+        const imageId = button.dataset.id;
+
+        // Update hidden input
+        document.getElementById('selectedImageId').value = imageId;
+
+        // Update UI to show selection
+        document.querySelectorAll('.select-btn').forEach(btn => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+        });
+        button.classList.remove('btn-outline-success');
+        button.classList.add('btn-success');
+
+        showNotification('Success', 'Character selected for the story!', true);
+    }
+
+    const loadCharactersBtn = document.getElementById('loadCharactersBtn');
+    if (loadCharactersBtn) {
+        loadCharactersBtn.addEventListener('click', loadRandomCharacters);
+        loadRandomCharacters();
+    }
 });

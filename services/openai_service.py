@@ -61,13 +61,20 @@ def analyze_artwork(image_url, instruction):
 
             logger.debug(f"Successfully downloaded and encoded image. Analyzing artwork...")
 
+            # Update system prompt to include character trait extraction
+            system_prompt = instruction.system_prompt
+            if "character_traits" not in system_prompt:
+                system_prompt += ("\nAlso extract 3-5 character traits that could be used "
+                                "in stories (e.g., 'playful', 'curious', 'brave'). "
+                                "Include these in the JSON response under 'character_traits' as an array.")
+
             # Call OpenAI API with the base64 encoded image and custom instructions
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
-                        "content": instruction.system_prompt
+                        "content": system_prompt
                     },
                     {
                         "role": "user",
