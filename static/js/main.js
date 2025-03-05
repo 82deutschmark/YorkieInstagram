@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createCharacterCard(image, index) {
         return `
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <img src="${image.image_url}" class="card-img-top" alt="${image.name}" style="height: 200px; object-fit: cover;">
+            <div class="character-gallery-col">
+                <div class="card character-card">
+                    <img src="${image.image_url}" class="card-img-top" alt="${image.name}">
                     <div class="card-body">
                         <h5 class="card-title">${image.name}</h5>
                         <p class="card-text small">${image.style}</p>
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 Character Traits: ${image.character_traits.join(', ')}
                             </small>
                         </p>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center mt-2">
                             <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
                                 <i class="fas fa-dice me-1"></i>Reroll
                             </button>
@@ -167,11 +167,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.ok) {
                 currentImages[index] = data.image;
-                const cardContainer = button.closest('.col-md-4');
+                const cardContainer = button.closest('.character-gallery-col');
                 cardContainer.outerHTML = createCharacterCard(data.image, index);
 
                 // Reattach event listeners
-                const newCard = document.querySelector(`[data-index="${index}"]`).closest('.col-md-4');
+                const newCard = document.querySelector(`[data-index="${index}"]`).closest('.character-gallery-col');
                 newCard.querySelector('.reroll-btn').addEventListener('click', handleReroll);
                 newCard.querySelector('.select-btn').addEventListener('click', handleSelect);
             } else {
