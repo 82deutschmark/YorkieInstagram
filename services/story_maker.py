@@ -1,4 +1,5 @@
 import os
+import json
 from openai import OpenAI
 import logging
 from typing import Dict, List, Tuple, Optional, Any
@@ -99,10 +100,10 @@ def generate_story(
                         "You are a master storyteller for kids. Create a captivating Netflix-series–style story "
                         "set in Uncle Mark's forest farm. The main characters are two courageous Yorkshire terriers, "
                         "Pawel (male, impulsive) and Pawleen (female, thoughtful). Include vivid, detailed descriptions "
-                        "of each character and scene with plenty of emojis."
+                        "of each character and scene with plenty of emojis. Provide your response in JSON format."
                     )
                 },
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt + "\n\nFormat your response as a JSON object with 'title', 'story', and 'characters' fields."}
             ],
             temperature=0.8,
             response_format={"type": "json_object"}
