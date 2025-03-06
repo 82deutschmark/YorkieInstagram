@@ -313,8 +313,30 @@ def get_instructions():
     except Exception as e:
         logger.error(f"Error getting instructions: {str(e)}")
         return jsonify({'error': str(e)}), 500
+        
+@app.route('/get_instruction/<int:instruction_id>', methods=['GET'])
+def get_instruction(instruction_id):
+    """Get a specific instruction by ID"""
+    try:
+        instruction = AIInstruction.query.get(instruction_id)
+        if not instruction:
+            return jsonify({'error': 'Instruction not found'}), 404
+            
+        return jsonify({
+            'success': True,
+            'instruction': {
+                'id': instruction.id,
+                'name': instruction.name,
+                'system_prompt': instruction.system_prompt,
+                'user_prompt': instruction.user_prompt,
+                'is_default': instruction.is_default
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting instruction: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/manage/instructions', methods=['GET', 'POST'])
+@app.route('/manage/instructions', methods=['GET', 'POST', 'PUT'])
 def manage_instructions():
     """Manage AI instructions"""
     try:
@@ -339,6 +361,45 @@ def manage_instructions():
                 'instruction': {
                     'id': instruction.id,
                     'name': instruction.name,
+                    'is_default': instruction.is_default
+                }
+            })
+            
+        elif request.method == 'PUT':
+            data = request.get_json()
+            instruction_id = data.get('id')
+            
+            if not instruction_id:
+                return jsonify({'error': 'Instruction ID is required'}), 400
+                
+            instruction = AIInstruction.query.get(instruction_id)
+            if not instruction:
+                return jsonify({'error': 'Instruction not found'}), 404
+                
+            instruction.name = data.get('name', instruction.name)
+            instruction.system_prompt = data.get('system_prompt', instruction.system_prompt)
+            instruction.user_prompt = data.get('user_prompt', instruction.user_prompt)
+            
+            # Handle is_default flag
+            if data.get('is_default', False) and not instruction.is_default:
+                # Unset any existing default
+                AIInstruction.query.filter_by(is_default=True).update({'is_default': False})
+                instruction.is_default = True
+            elif not data.get('is_default', True) and instruction.is_default:
+                # Ensure there's always a default
+                if AIInstruction.query.filter_by(is_default=True).count() <= 1:
+                    return jsonify({'error': 'At least one instruction must be set as default'}), 400
+                instruction.is_default = False
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'instruction': {
+                    'id': instruction.id,
+                    'name': instruction.name,
+                    'system_prompt': instruction.system_prompt,
+                    'user_prompt': instruction.user_prompt,
                     'is_default': instruction.is_default
                 }
             })
