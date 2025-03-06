@@ -16,16 +16,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let instructionModal, hashtagModal;
     instructionModal = new bootstrap.Modal(document.getElementById('instructionModal'));
     hashtagModal = new bootstrap.Modal(document.getElementById('hashtagModal'));
-
+    
     // Load existing instructions and hashtags
     loadInstructions();
     loadHashtagCollections();
-
+    
     // Setup form handlers
     document.getElementById('saveInstructionBtn').addEventListener('click', saveInstruction);
     document.getElementById('saveHashtagsBtn').addEventListener('click', saveHashtags);
-
-
+    
+    const characterGallery = document.getElementById('characterSelection');
+    const loadCharactersBtn = document.getElementById('loadCharactersBtn');
+    const selectionCounter = document.getElementById('selectionCounter');
+    const beginAdventureBtn = document.getElementById('beginAdventureBtn');
+    const selectedCharacterIds = document.getElementById('selectedCharacterIds');
+    
+    let selectedCharacters = new Set();
+    let currentImages = [];
+    const MAX_SELECTIONS = 3;
+    
     function showNotification(title, message, success = true) {
         toastTitle.textContent = title;
         toastMessage.textContent = message;
@@ -34,24 +43,171 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.show();
     }
     
-
+    function createCharacterCard(image, index) {
+        return `
+            <div class="character-card" data-id="${image.id}">
+                <img src="${image.image_url}" class="card-img-top" alt="${image.name}">
+                <div class="card-body">
+                    <h5 class="card-title">${image.name}</h5>
+                    <p class="card-text small">${image.style}</p>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            Character Traits: ${image.character_traits.join(', ')}
+                        </small>
+                    </p>
+                    <div class="btn-group d-flex">
+                        <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
+                            <i class="fas fa-dice"></i>
+                        </button>
+                        <button class="btn btn-outline-success btn-sm select-btn">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async function loadRandomCharacters() {
+        try {
+            const response = await fetch('/get_random_images?count=9');
+            const data = await response.json();
+    
+            if (response.ok) {
+                currentImages = data.images;
+                characterGallery.innerHTML = currentImages.map((img, index) => createCharacterCard(img, index)).join('');
+                attachEventListeners();
+    
+                // Reset selections
+                selectedCharacters.clear();
+                updateSelectionCounter();
+            } else {
+                showNotification('Error', data.error || 'Failed to load characters', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while loading characters', false);
+        }
+    }
+    
+    function updateSelectionCounter() {
+        selectionCounter.textContent = `${selectedCharacters.size}/${MAX_SELECTIONS} Characters Selected`;
+        beginAdventureBtn.disabled = selectedCharacters.size !== MAX_SELECTIONS;
+        selectedCharacterIds.value = Array.from(selectedCharacters).join(',');
+    }
+    
+    function handleSelect(event) {
+        const card = event.target.closest('.character-card');
+        const characterId = card.dataset.id;
+    
+        if (selectedCharacters.has(characterId)) {
+            selectedCharacters.delete(characterId);
+            card.classList.remove('selected');
+        } else if (selectedCharacters.size < MAX_SELECTIONS) {
+            selectedCharacters.add(characterId);
+            card.classList.add('selected');
+        } else {
+            showNotification('Warning', `You can only select up to ${MAX_SELECTIONS} characters`, false);
+            return;
+        }
+    
+        updateSelectionCounter();
+    }
+    
+    async function handleReroll(event) {
+        const button = event.currentTarget;
+        const index = parseInt(button.dataset.index);
+        const excludedIds = currentImages.map(img => img.id);
+    
+        try {
+            const params = new URLSearchParams();
+            excludedIds.forEach(id => params.append('excluded_ids[]', id));
+    
+            const response = await fetch(`/reroll_image/${index}?${params.toString()}`);
+            const data = await response.json();
+    
+            if (response.ok) {
+                currentImages[index] = data.image;
+                const card = button.closest('.character-card');
+    
+                // If this card was selected, remove it from selections
+                if (card.classList.contains('selected')) {
+                    selectedCharacters.delete(card.dataset.id);
+                    updateSelectionCounter();
+                }
+    
+                // Replace the card
+                card.outerHTML = createCharacterCard(data.image, index);
+                attachEventListeners();
+            } else {
+                showNotification('Error', data.error || 'Failed to reroll character', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while rerolling character', false);
+        }
+    }
+    
+    function attachEventListeners() {
+        document.querySelectorAll('.reroll-btn').forEach(btn => {
+            btn.addEventListener('click', handleReroll);
+        });
+    
+        document.querySelectorAll('.select-btn').forEach(btn => {
+            btn.addEventListener('click', handleSelect);
+        });
+    
+        document.querySelectorAll('.character-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.btn')) {
+                    e.currentTarget.querySelector('.select-btn').click();
+                }
+            });
+        });
+    }
+    
+    beginAdventureBtn.addEventListener('click', async () => {
+        const formData = new FormData(storyForm);
+        formData.append('selected_character_ids', Array.from(selectedCharacters).join(','));
+    
+        try {
+            const response = await fetch('/begin_story', {
+                method: 'POST',
+                body: formData
+            });
+    
+            const data = await response.json();
+            if (response.ok) {
+                // Redirect to the storyboard page
+                window.location.href = `/storyboard/${data.story_id}`;
+            } else {
+                showNotification('Error', data.error || 'Failed to start story', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while starting the story', false);
+        }
+    });
+    
+    if (loadCharactersBtn) {
+        loadCharactersBtn.addEventListener('click', loadRandomCharacters);
+        loadRandomCharacters();
+    }
+    
     if (imageForm) {
         imageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
             
-
+    
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     body: new FormData(imageForm)
                 });
                 
-
+    
                 const data = await response.json();
                 
-
+    
                 if (response.ok) {
                     generatedContent.textContent = data.caption;
                     resultDiv.style.display = 'block';
@@ -68,14 +224,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-
+    
     if (storyForm) {
         storyForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             generateStoryBtn.disabled = true;
             generateStoryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
             
-
+    
             try {
                 const formData = new FormData(storyForm);
                 const response = await fetch('/generate_story', {
@@ -83,10 +239,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 });
                 
-
+    
                 const data = await response.json();
                 
-
+    
                 if (response.ok) {
                     // Create formatted HTML from the story JSON
                     const storyData = data.story;
@@ -132,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-
+    
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(generatedContent.textContent)
@@ -141,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-
+    
     if (copyStoryBtn) {
         copyStoryBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(generatedStory.textContent)
@@ -150,192 +306,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-
-    function createCharacterCard(image, index) {
-        return `
-            <div class="character-gallery-col">
-                <div class="card character-card">
-                    <img src="${image.image_url}" class="card-img-top" alt="${image.name}">
-                    <div class="card-body">
-                        <h5 class="card-title">${image.name}</h5>
-                        <p class="card-text small">${image.style}</p>
-                        <p class="card-text">
-                            <small class="text-muted">
-                                Character Traits: ${image.character_traits.join(', ')}
-                            </small>
-                        </p>
-                        <div class="btn-group">
-                            <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
-                                <i class="fas fa-dice"></i>
-                            </button>
-                            <button class="btn btn-outline-info btn-sm describe-btn" data-url="${image.image_url}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="btn btn-outline-success btn-sm select-btn" data-id="${image.id}">
-                                <i class="fas fa-check"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
     
-
-    let currentImages = [];
     
-
-    async function loadRandomCharacters() {
-        try {
-            const response = await fetch('/get_random_images');
-            const data = await response.json();
-            
-
-            if (response.ok) {
-                currentImages = data.images;
-                const gallery = document.getElementById('characterGallery');
-                gallery.innerHTML = currentImages.map((img, index) => createCharacterCard(img, index)).join('');
-                attachEventListeners();
-            } else {
-                showNotification('Error', data.error || 'Failed to load characters', false);
-            }
-        } catch (error) {
-            showNotification('Error', 'An error occurred while loading characters', false);
-        }
-    }
-    
-
-    async function handleReroll(event) {
-        const button = event.currentTarget;
-        const index = parseInt(button.dataset.index);
-        const excludedIds = currentImages.map(img => img.id);
-        
-
-        try {
-            const params = new URLSearchParams();
-            excludedIds.forEach(id => params.append('excluded_ids[]', id));
-            
-
-            const response = await fetch(`/reroll_image/${index}?${params.toString()}`);
-            const data = await response.json();
-            
-
-            if (response.ok) {
-                currentImages[index] = data.image;
-                const cardContainer = button.closest('.character-gallery-col');
-                cardContainer.outerHTML = createCharacterCard(data.image, index);
-                attachEventListeners();
-            } else {
-                showNotification('Error', data.error || 'Failed to reroll character', false);
-            }
-        } catch (error) {
-            showNotification('Error', 'An error occurred while rerolling character', false);
-        }
-    }
-    
-
-    function handleSelect(event) {
-        const button = event.currentTarget;
-        const imageId = button.dataset.id;
-        
-
-        // Update hidden input
-        document.getElementById('selectedImageId').value = imageId;
-        
-
-        // Update UI to show selection
-        document.querySelectorAll('.select-btn').forEach(btn => {
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-outline-success');
-        });
-        button.classList.remove('btn-outline-success');
-        button.classList.add('btn-success');
-        
-
-        showNotification('Success', 'Character selected for the story!', true);
-    }
-    
-
-    async function handleDescribe(event) {
-        const button = event.currentTarget;
-        const imageUrl = button.dataset.url;
-        const cardBody = button.closest('.card-body');
-        const instructionSelect = cardBody.querySelector('.instruction-select');
-        const instructionId = instructionSelect ? instructionSelect.value : null;
-        
-
-        button.disabled = true;
-        const originalHtml = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        
-
-        try {
-            const response = await fetch('/analyze_image', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    image_url: imageUrl,
-                    instruction_id: instructionId
-                })
-            });
-            
-
-            const data = await response.json();
-            
-
-            if (response.ok) {
-                const card = button.closest('.character-card');
-                card.querySelector('.card-title').textContent = data.analysis.name || 'Unnamed Character';
-                card.querySelector('.card-text.small').textContent = data.analysis.style || 'Style not specified';
-                card.querySelector('.text-muted').textContent = 
-                    'Character Traits: ' + (data.analysis.character_traits || []).join(', ');
-                
-
-                showNotification('Success', 'Image analyzed successfully!', true);
-            } else {
-                showNotification('Error', data.error || 'Failed to analyze image', false);
-            }
-        } catch (error) {
-            showNotification('Error', 'An error occurred while analyzing the image', false);
-        } finally {
-            button.disabled = false;
-            button.innerHTML = originalHtml;
-        }
-    }
-    
-
-    // Add describe button event listeners
-    function attachEventListeners() {
-        document.querySelectorAll('.reroll-btn').forEach(btn => {
-            btn.addEventListener('click', handleReroll);
-        });
-        
-
-        document.querySelectorAll('.describe-btn').forEach(btn => {
-            btn.addEventListener('click', handleDescribe);
-        });
-        
-
-        document.querySelectorAll('.select-btn').forEach(btn => {
-            btn.addEventListener('click', handleSelect);
-        });
-    }
-    
-
-    const loadCharactersBtn = document.getElementById('loadCharactersBtn');
-    if (loadCharactersBtn) {
-        loadCharactersBtn.addEventListener('click', loadRandomCharacters);
-        loadRandomCharacters();
-    }
-    
-
     async function loadInstructions() {
         try {
             const response = await fetch('/manage/instructions');
             const data = await response.json();
-
+    
             if (response.ok) {
                 const list = document.getElementById('instructionsList');
                 list.innerHTML = data.instructions.map(instruction => `
@@ -344,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <small class="text-muted">System Prompt: ${instruction.system_prompt}</small>
                     </div>
                 `).join('');
-
+    
                 // Update select options
                 const select = document.getElementById('instruction');
                 if (select) {
@@ -359,12 +336,12 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'Failed to load instructions', false);
         }
     }
-
+    
     async function loadHashtagCollections() {
         try {
             const response = await fetch('/manage/hashtags');
             const data = await response.json();
-
+    
             if (response.ok) {
                 const list = document.getElementById('hashtagsList');
                 list.innerHTML = data.collections.map(collection => `
@@ -373,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <small class="text-muted">${collection.hashtags.join(' ')}</small>
                     </div>
                 `).join('');
-
+    
                 // Update select options
                 const select = document.getElementById('hashtags');
                 if (select) {
@@ -388,11 +365,11 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'Failed to load hashtag collections', false);
         }
     }
-
+    
     async function saveInstruction() {
         const form = document.getElementById('instructionForm');
         const formData = new FormData(form);
-
+    
         try {
             const response = await fetch('/manage/instructions', {
                 method: 'POST',
@@ -406,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     is_default: formData.get('is_default') === 'on'
                 })
             });
-
+    
             if (response.ok) {
                 await loadInstructions();
                 instructionModal.hide();
@@ -419,11 +396,11 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'An error occurred while saving', false);
         }
     }
-
+    
     async function saveHashtags() {
         const form = document.getElementById('hashtagForm');
         const formData = new FormData(form);
-
+    
         try {
             const response = await fetch('/manage/hashtags', {
                 method: 'POST',
@@ -436,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     is_default: formData.get('is_default') === 'on'
                 })
             });
-
+    
             if (response.ok) {
                 await loadHashtagCollections();
                 hashtagModal.hide();
@@ -449,8 +426,9 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'An error occurred while saving', false);
         }
     }
-
+    
     // Social sharing functions are already defined in the edited code snippet
-
-
+    
+    
+    
 });

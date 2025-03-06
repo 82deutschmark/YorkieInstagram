@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yorkie Art Post Generator</title>
+    <title>Visual Novel Story Generator</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
@@ -11,215 +11,97 @@
 <body>
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-8">
+            <div class="col-md-10">
                 <div class="text-center mb-4">
-                    <i class="fas fa-dog dog-icon"></i>
-                    <h1 class="display-4">Yorkie Art Post Generator</h1>
-                    <p class="lead">Transform your Yorkshire Terrier artwork into engaging Instagram posts</p>
+                    <i class="fas fa-book-open dog-icon"></i>
+                    <h1 class="display-4">Choose Your Adventure</h1>
+                    <p class="lead">Select up to three characters for your story</p>
                 </div>
 
-                <!-- Tabs for Post Generator and Story Maker -->
-                <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="post-tab" data-bs-toggle="tab" data-bs-target="#post" type="button" role="tab">
-                            <i class="fas fa-image me-2"></i>Post Generator
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="story-tab" data-bs-toggle="tab" data-bs-target="#story" type="button" role="tab">
-                            <i class="fas fa-book me-2"></i>Story Maker
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content" id="mainTabsContent">
-                    <!-- Post Generator Tab -->
-                    <div class="tab-pane fade show active" id="post" role="tabpanel">
-                        <div class="card shadow-lg">
-                            <div class="card-body">
-                                <form id="imageForm">
-                                    <div class="mb-4">
-                                        <label for="imageUrl" class="form-label">
-                                            <i class="fas fa-image me-2"></i>Artwork Image URL
-                                        </label>
-                                        <input type="url" class="form-control form-control-lg" 
-                                               id="imageUrl" name="image_url" required
-                                               placeholder="Enter the URL of your Yorkie artwork">
-                                        <div class="form-text">Paste a direct link to your artwork image</div>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="instruction" class="form-label">
-                                            <i class="fas fa-magic me-2"></i>Analysis Style
-                                        </label>
-                                        <div class="input-group">
-                                            <select class="form-select" id="instruction" name="instruction_id">
-                                                {% for instruction in instructions %}
-                                                <option value="{{ instruction.id }}" {% if instruction.is_default %}selected{% endif %}>
-                                                    {{ instruction.name }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#instructionModal">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="hashtags" class="form-label">
-                                            <i class="fas fa-hashtag me-2"></i>Hashtag Collection
-                                        </label>
-                                        <div class="input-group">
-                                            <select class="form-select" id="hashtags" name="hashtag_collection_id">
-                                                {% for collection in hashtag_collections %}
-                                                <option value="{{ collection.id }}" {% if collection.is_default %}selected{% endif %}>
-                                                    {{ collection.name }}
-                                                </option>
-                                                {% endfor %}
-                                            </select>
-                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#hashtagModal">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="text-center">
-                                        <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
-                                            <i class="fas fa-magic me-2"></i>Generate Post
-                                        </button>
-                                    </div>
-                                </form>
-
-                                <div class="mt-4" id="result" style="display: none;">
-                                    <h3 class="mb-3">
-                                        <i class="fab fa-instagram me-2"></i>Generated Instagram Post
-                                    </h3>
-                                    <div class="border rounded p-4 mt-2 result-content" id="generatedContent"></div>
-                                    <div class="text-center mt-3">
-                                        <div class="btn-group">
-                                            <button class="btn btn-outline-secondary btn-sm" id="copyBtn">
-                                                <i class="fas fa-copy me-2"></i>Copy to Clipboard
-                                            </button>
-                                            <button class="btn btn-primary btn-sm social-share-btn facebook-share" id="shareFacebookBtn">
-                                                <i class="fab fa-facebook-f"></i>Share on Facebook
-                                            </button>
-                                            <button class="btn btn-primary btn-sm social-share-btn instagram-share" id="shareInstagramBtn">
-                                                <i class="fab fa-instagram"></i>Share on Instagram
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Character Selection -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3 class="mb-0">Available Characters</h3>
+                            <button class="btn btn-primary" id="loadCharactersBtn">
+                                <i class="fas fa-sync me-2"></i>Load New Characters
+                            </button>
+                        </div>
+                        <div id="characterSelection" class="character-gallery-row">
+                            <!-- Character cards will be dynamically inserted here -->
+                        </div>
+                        <div class="text-center mt-3">
+                            <span class="badge bg-primary" id="selectionCounter">0/3 Characters Selected</span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Story Maker Tab -->
-                    <div class="tab-pane fade" id="story" role="tabpanel">
-                        <div class="card shadow-lg mb-4">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center mb-4">
-                                    <h3 class="mb-0">Available Characters</h3>
-                                    <button class="btn btn-primary" id="loadCharactersBtn">
-                                        <i class="fas fa-sync me-2"></i>Load New Characters
-                                    </button>
-                                </div>
-                                <div class="character-gallery-row" id="characterGallery">
-                                    <!-- Character cards will be dynamically inserted here -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card shadow-lg">
-                            <div class="card-body">
-                                <form id="storyForm">
-                                    <input type="hidden" name="selected_image_id" id="selectedImageId">
-
-                                    <div class="mb-4">
-                                        <label for="conflict" class="form-label">
-                                            <i class="fas fa-bolt me-2"></i>Primary Conflict
-                                        </label>
-                                        <select class="form-select" id="conflict" name="conflict">
-                                            {% for emoji, conflict in story_options.conflicts %}
-                                            <option value="{{ conflict }}">{{ emoji }} {{ conflict }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="form-text">Or write your own conflict below:</div>
-                                        <input type="text" class="form-control mt-2" name="custom_conflict" 
-                                               placeholder="Enter your custom conflict">
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="setting" class="form-label">
-                                            <i class="fas fa-map-marker-alt me-2"></i>Story Setting
-                                        </label>
-                                        <select class="form-select" id="setting" name="setting">
-                                            {% for emoji, setting in story_options.settings %}
-                                            <option value="{{ setting }}">{{ emoji }} {{ setting }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="form-text">Or write your own setting below:</div>
-                                        <input type="text" class="form-control mt-2" name="custom_setting"
-                                               placeholder="Enter your custom setting">
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="narrative" class="form-label">
-                                            <i class="fas fa-feather me-2"></i>Narrative Style
-                                        </label>
-                                        <select class="form-select" id="narrative" name="narrative_style">
-                                            {% for emoji, style in story_options.narrative_styles %}
-                                            <option value="{{ style }}">{{ emoji }} {{ style }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="form-text">Or write your own style below:</div>
-                                        <input type="text" class="form-control mt-2" name="custom_narrative"
-                                               placeholder="Enter your custom narrative style">
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="mood" class="form-label">
-                                            <i class="fas fa-smile me-2"></i>Story Mood
-                                        </label>
-                                        <select class="form-select" id="mood" name="mood">
-                                            {% for emoji, mood in story_options.moods %}
-                                            <option value="{{ mood }}">{{ emoji }} {{ mood }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="form-text">Or write your own mood below:</div>
-                                        <input type="text" class="form-control mt-2" name="custom_mood"
-                                               placeholder="Enter your custom mood">
-                                    </div>
-
-                                    <div class="text-center">
-                                        <button type="submit" class="btn btn-primary btn-lg" id="generateStoryBtn">
-                                            <i class="fas fa-book me-2"></i>Generate Story
-                                        </button>
-                                    </div>
-                                </form>
-
-                                <div class="mt-4" id="storyResult" style="display: none;">
-                                    <h3 class="mb-3">
-                                        <i class="fas fa-book-open me-2"></i>Generated Story
-                                    </h3>
-                                    <div class="border rounded p-4 mt-2 result-content" id="generatedStory"></div>
-                                    <div class="text-center mt-3">
-                                        <div class="btn-group">
-                                            <button class="btn btn-outline-secondary btn-sm" id="copyStoryBtn">
-                                                <i class="fas fa-copy me-2"></i>Copy to Clipboard
-                                            </button>
-                                            <button class="btn btn-primary btn-sm social-share-btn facebook-share" id="shareStoryFacebookBtn">
-                                                <i class="fab fa-facebook-f"></i>Share on Facebook
-                                            </button>
-                                            <button class="btn btn-primary btn-sm social-share-btn instagram-share" id="shareStoryInstagramBtn">
-                                                <i class="fab fa-instagram"></i>Share on Instagram
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Story Options (Collapsible) -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#storyOptions">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cog me-2"></i>Story Options
+                            </h5>
+                            <i class="fas fa-chevron-down"></i>
                         </div>
                     </div>
+                    <div class="collapse" id="storyOptions">
+                        <div class="card-body">
+                            <form id="storyForm">
+                                <input type="hidden" name="selected_character_ids" id="selectedCharacterIds">
+
+                                <div class="mb-3">
+                                    <label for="conflict" class="form-label">
+                                        <i class="fas fa-bolt me-2"></i>Primary Conflict
+                                    </label>
+                                    <select class="form-select" id="conflict" name="conflict">
+                                        {% for emoji, conflict in story_options.conflicts %}
+                                        <option value="{{ conflict }}">{{ emoji }} {{ conflict }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Or write your own:</div>
+                                    <input type="text" class="form-control mt-2" name="custom_conflict" 
+                                           placeholder="Enter your custom conflict">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="setting" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Story Setting
+                                    </label>
+                                    <select class="form-select" id="setting" name="setting">
+                                        {% for emoji, setting in story_options.settings %}
+                                        <option value="{{ setting }}">{{ emoji }} {{ setting }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Or write your own:</div>
+                                    <input type="text" class="form-control mt-2" name="custom_setting"
+                                           placeholder="Enter your custom setting">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="mood" class="form-label">
+                                        <i class="fas fa-smile me-2"></i>Story Mood
+                                    </label>
+                                    <select class="form-select" id="mood" name="mood">
+                                        {% for emoji, mood in story_options.moods %}
+                                        <option value="{{ mood }}">{{ emoji }} {{ mood }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Or write your own:</div>
+                                    <input type="text" class="form-control mt-2" name="custom_mood"
+                                           placeholder="Enter your custom mood">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Begin Adventure Button -->
+                <div class="text-center mb-5">
+                    <button type="button" class="btn btn-primary btn-lg" id="beginAdventureBtn" disabled>
+                        <i class="fas fa-book me-2"></i>Begin Your Adventure
+                    </button>
                 </div>
             </div>
         </div>
@@ -317,6 +199,5 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/edit-instruction.js') }}"></script>
 </body>
 </html>
