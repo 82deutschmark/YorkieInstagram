@@ -180,7 +180,7 @@ def generate_story_route():
             setting=result['setting'],
             narrative_style=result['narrative_style'],
             mood=result['mood'],
-            generated_story=result['story']
+            generated_story=result['story']  # This is now a JSON string, not a dict
         )
 
         # If an image was selected, associate it with the story

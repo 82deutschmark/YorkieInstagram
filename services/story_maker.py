@@ -112,7 +112,7 @@ def generate_story(
         # Parse and return the generated story
         result = json.loads(response.choices[0].message.content)
         return {
-            "story": result,
+            "story": json.dumps(result),  # Convert dict to JSON string for database storage
             "conflict": final_conflict,
             "setting": final_setting,
             "narrative_style": final_narrative,
