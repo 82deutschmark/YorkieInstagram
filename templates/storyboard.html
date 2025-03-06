@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Adventure - Story Progress</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <!-- Header with character portraits -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-body">
+                        <h2 class="text-center mb-4">Your Characters</h2>
+                        <div class="d-flex justify-content-around align-items-center">
+                            {% for character in session.characters %}
+                            <div class="text-center">
+                                <img src="{{ character.image_url }}" alt="{{ character.name }}" 
+                                     class="rounded-circle mb-2" style="width: 100px; height: 100px; object-fit: cover;">
+                                <h5>{{ character.name }}</h5>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current story segment -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-body">
+                        <div class="story-content mb-4">
+                            {{ segment.content | safe }}
+                        </div>
+
+                        {% if not session.is_completed %}
+                            <h4 class="mb-3">What will you do?</h4>
+                            <div class="choices-container">
+                                {% for choice in segment.choices %}
+                                <div class="mb-3">
+                                    <button class="btn btn-primary btn-lg w-100 choice-btn" 
+                                            data-choice-id="{{ choice.id }}">
+                                        {{ choice.content }}
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center">
+                                <h4 class="mb-3">The End</h4>
+                                <a href="/" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-redo me-2"></i>Start New Adventure
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Story progress -->
+                <div class="card shadow-lg">
+                    <div class="card-body">
+                        <h4 class="mb-3">Story Progress</h4>
+                        <div class="progress mb-3">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ (session.choices|length / 5) * 100 }}%">
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <a href="/" class="btn btn-outline-secondary">
+                                <i class="fas fa-home me-2"></i>Return to Main Page
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const choiceId = btn.dataset.choiceId;
+                try {
+                    const response = await fetch(`/make_choice/${choiceId}`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error making choice:', error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

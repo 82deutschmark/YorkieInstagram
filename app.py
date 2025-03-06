@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from services.openai_service import analyze_artwork, generate_instagram_post
 from services.story_maker import generate_story, get_story_options
+import openai # Add this import
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -25,7 +26,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 db = SQLAlchemy(app)
 
 # Import models after db initialization to avoid circular imports
-from models import ImageAnalysis, AIInstruction, HashtagCollection, StoryGeneration
+from models import ImageAnalysis, AIInstruction, HashtagCollection, StoryGeneration, StorySession, StorySegment, StoryChoice, PlayerChoice # Added imports
 
 def initialize_defaults():
     """Initialize default AI instructions and hashtags if they don't exist"""
@@ -452,6 +453,169 @@ def debug_page():
         analyses=analyses,
         stories=stories
     )
+
+
+@app.route('/begin_story', methods=['POST'])
+def begin_story():
+    """Start a new story session with selected characters"""
+    try:
+        # Get selected character IDs and story parameters
+        character_ids = request.form.get('selected_character_ids').split(',')
+        conflict = request.form.get('conflict') or request.form.get('custom_conflict')
+        setting = request.form.get('setting') or request.form.get('custom_setting')
+        mood = request.form.get('mood') or request.form.get('custom_mood')
+
+        # Create new story session
+        session = StorySession(
+            setting=setting,
+            mood=mood,
+            conflict=conflict
+        )
+
+        # Add selected characters to session
+        characters = ImageAnalysis.query.filter(ImageAnalysis.id.in_(character_ids)).all()
+        session.characters.extend(characters)
+
+        db.session.add(session)
+        db.session.flush()  # Get session ID before generating first segment
+
+        # Generate initial story segment
+        initial_segment = generate_story_segment(session)
+        session.current_segment = initial_segment
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'story_id': session.id
+        })
+
+    except Exception as e:
+        logger.error(f"Error starting story: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/storyboard/<int:story_id>')
+def storyboard(story_id):
+    """Display the current story state and choices"""
+    try:
+        session = StorySession.query.get_or_404(story_id)
+        segment = session.current_segment
+
+        return render_template('storyboard.html',
+                             session=session,
+                             segment=segment)
+
+    except Exception as e:
+        logger.error(f"Error loading storyboard: {str(e)}")
+        return render_template('error.html', error=str(e))
+
+@app.route('/make_choice/<int:choice_id>', methods=['POST'])
+def make_choice(choice_id):
+    """Handle player's choice and generate next story segment"""
+    try:
+        choice = StoryChoice.query.get_or_404(choice_id)
+        session = choice.segment.session
+
+        # Create player choice record
+        player_choice = PlayerChoice(
+            session=session,
+            choice=choice,
+            sequence_number=len(session.choices) + 1
+        )
+        db.session.add(player_choice)
+
+        # Generate next segment if it doesn't exist
+        if not choice.next_segment:
+            next_segment = generate_story_segment(session, choice)
+            choice.next_segment = next_segment
+
+        # Update session's current segment
+        session.current_segment = choice.next_segment
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'next_segment_id': choice.next_segment.id
+        })
+
+    except Exception as e:
+        logger.error(f"Error processing choice: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def generate_story_segment(session, previous_choice=None):
+    """Generate a new story segment with choices using OpenAI"""
+    try:
+        # Build context from session data
+        context = {
+            'characters': [{
+                'name': char.analysis_result.get('name', ''),
+                'traits': char.character_traits,
+                'description': char.analysis_result.get('style', '')
+            } for char in session.characters],
+            'setting': session.setting,
+            'mood': session.mood,
+            'conflict': session.conflict,
+            'previous_segments': [{
+                'content': seg.content,
+                'choice_made': next((c.content for c in seg.choices if c.player_choice), None)
+            } for seg in session.segments],
+            'is_first_segment': previous_choice is None
+        }
+
+        # Generate story continuation
+        response = openai.chat.completions.create(
+            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an engaging storyteller creating an interactive story. 
+                    For each segment, provide a compelling narrative continuation and exactly two distinct 
+                    choices that will meaningfully impact the story's direction. 
+                    Format your response as JSON with the following structure:
+                    {
+                        "segment_content": "Story text here...",
+                        "choices": [
+                            {"content": "First choice description"},
+                            {"content": "Second choice description"}
+                        ]
+                    }"""
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(context)
+                }
+            ],
+            response_format={"type": "json_object"}
+        )
+
+        # Parse response
+        result = json.loads(response.choices[0].message.content)
+
+        # Create new segment
+        segment = StorySegment(
+            session=session,
+            content=result['segment_content'],
+            sequence_number=len(session.segments) + 1
+        )
+        if previous_choice:
+            segment.parent_choice = previous_choice
+
+        db.session.add(segment)
+        db.session.flush()
+
+        # Create choices
+        for choice_data in result['choices']:
+            choice = StoryChoice(
+                segment=segment,
+                content=choice_data['content']
+            )
+            db.session.add(choice)
+
+        return segment
+
+    except Exception as e:
+        logger.error(f"Error generating story segment: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
