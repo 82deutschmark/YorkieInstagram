@@ -88,7 +88,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 
 
                 if (response.ok) {
-                    generatedStory.textContent = data.story;
+                    // Create formatted HTML from the story JSON
+                    const storyData = data.story;
+                    let storyHTML = `<h2>${storyData.title}</h2>`;
+                    
+                    // Format story scenes
+                    if (storyData.story && Array.isArray(storyData.story)) {
+                        storyData.story.forEach(scene => {
+                            storyHTML += `<div class="story-scene">
+                                <h3>${scene.scene || ''}</h3>
+                                <p>${scene.description || ''}</p>
+                            </div>`;
+                        });
+                    }
+                    
+                    // Add characters section if present
+                    if (storyData.characters && Array.isArray(storyData.characters)) {
+                        storyHTML += `<h3>Characters</h3>
+                        <div class="story-characters">`;
+                        storyData.characters.forEach(character => {
+                            const traits = character.traits ? character.traits.join(', ') : '';
+                            storyHTML += `<div class="character">
+                                <h4>${character.name || ''}</h4>
+                                <p><strong>Traits:</strong> ${traits}</p>
+                                <p>${character.description || ''}</p>
+                            </div>`;
+                        });
+                        storyHTML += `</div>`;
+                    }
+                    
+                    generatedStory.innerHTML = storyHTML;
                     storyResultDiv.style.display = 'block';
                     showNotification('Success', 'Story generated successfully!', true);
                 } else {

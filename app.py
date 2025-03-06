@@ -190,9 +190,11 @@ def generate_story_route():
         db.session.add(story)
         db.session.commit()
 
+        # Parse the JSON string back to a Python object for proper display
+        story_data = json.loads(result['story'])
         return jsonify({
             'success': True,
-            'story': result['story']
+            'story': story_data
         })
 
     except Exception as e:
