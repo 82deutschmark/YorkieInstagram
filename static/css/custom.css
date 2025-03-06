@@ -108,16 +108,18 @@ body {
 .character-card {
     height: 100%;
     margin-bottom: 1rem;
-    max-width: 300px; /* Limit maximum width */
+    max-width: 280px; /* Overall card size reduction */
 }
 
 .character-card .card-img-top {
-    height: 120px; /* Reduced from 150px */
-    object-fit: cover;
+    height: 180px; /* Maintain aspect ratio */
+    object-fit: contain; /* Changed from cover to maintain image proportions */
+    padding: 0.5rem;
+    background-color: var(--bs-dark);
 }
 
 .character-card .card-body {
-    padding: 0.75rem; /* Reduced padding */
+    padding: 0.75rem;
 }
 
 .character-card .card-title {
@@ -133,18 +135,21 @@ body {
 .character-gallery-row {
     display: flex;
     flex-wrap: wrap;
-    margin: -0.5rem;
-    justify-content: center; /* Center cards */
+    gap: 1rem;
+    justify-content: center;
 }
 
 .character-gallery-col {
-    flex: 0 0 280px; /* Fixed width for consistent sizing */
+    flex: 0 0 280px;
     max-width: 280px;
-    padding: 0.5rem;
+    display: flex;
+    align-items: stretch;
 }
 
 .character-card .btn-group {
     display: flex;
+    justify-content: space-between;
+    width: 100%;
     gap: 0.25rem;
 }
 

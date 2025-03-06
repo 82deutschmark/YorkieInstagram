@@ -28,17 +28,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
-    
+            
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     body: new FormData(imageForm)
                 });
-    
+                
 
                 const data = await response.json();
-    
+                
 
                 if (response.ok) {
                     generatedContent.textContent = data.caption;
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             generateStoryBtn.disabled = true;
             generateStoryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
-    
+            
 
             try {
                 const formData = new FormData(storyForm);
@@ -70,10 +70,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     body: formData
                 });
-    
+                
 
                 const data = await response.json();
-    
+                
 
                 if (response.ok) {
                     generatedStory.textContent = data.story;
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 Character Traits: ${image.character_traits.join(', ')}
                             </small>
                         </p>
-                        <div class="btn-group d-flex justify-content-between mt-2">
+                        <div class="btn-group">
                             <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
                                 <i class="fas fa-dice"></i>
                             </button>
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('/get_random_images');
             const data = await response.json();
-    
+            
 
             if (response.ok) {
                 currentImages = data.images;
@@ -168,16 +168,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const button = event.currentTarget;
         const index = parseInt(button.dataset.index);
         const excludedIds = currentImages.map(img => img.id);
-    
+        
 
         try {
             const params = new URLSearchParams();
             excludedIds.forEach(id => params.append('excluded_ids[]', id));
-    
+            
 
             const response = await fetch(`/reroll_image/${index}?${params.toString()}`);
             const data = await response.json();
-    
+            
 
             if (response.ok) {
                 currentImages[index] = data.image;
@@ -196,11 +196,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleSelect(event) {
         const button = event.currentTarget;
         const imageId = button.dataset.id;
-    
+        
 
         // Update hidden input
         document.getElementById('selectedImageId').value = imageId;
-    
+        
 
         // Update UI to show selection
         document.querySelectorAll('.select-btn').forEach(btn => {
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         button.classList.remove('btn-outline-success');
         button.classList.add('btn-success');
-    
+        
 
         showNotification('Success', 'Character selected for the story!', true);
     }
@@ -218,12 +218,13 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleDescribe(event) {
         const button = event.currentTarget;
         const imageUrl = button.dataset.url;
-    
+        const cardBody = button.closest('.card-body');
+        const instructionSelect = cardBody.querySelector('.instruction-select');
+        const instructionId = instructionSelect ? instructionSelect.value : null;
 
         button.disabled = true;
         const originalHtml = button.innerHTML;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    
 
         try {
             const response = await fetch('/analyze_image', {
@@ -231,21 +232,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ image_url: imageUrl })
+                body: JSON.stringify({ 
+                    image_url: imageUrl,
+                    instruction_id: instructionId
+                })
             });
-    
 
             const data = await response.json();
-    
 
             if (response.ok) {
-                // Find the card and update its content
                 const card = button.closest('.character-card');
                 card.querySelector('.card-title').textContent = data.analysis.name || 'Unnamed Character';
                 card.querySelector('.card-text.small').textContent = data.analysis.style || 'Style not specified';
                 card.querySelector('.text-muted').textContent = 
                     'Character Traits: ' + (data.analysis.character_traits || []).join(', ');
-    
 
                 showNotification('Success', 'Image analyzed successfully!', true);
             } else {
@@ -265,12 +265,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.reroll-btn').forEach(btn => {
             btn.addEventListener('click', handleReroll);
         });
-    
+        
 
         document.querySelectorAll('.describe-btn').forEach(btn => {
             btn.addEventListener('click', handleDescribe);
         });
-    
+        
 
         document.querySelectorAll('.select-btn').forEach(btn => {
             btn.addEventListener('click', handleSelect);
@@ -283,4 +283,66 @@ document.addEventListener('DOMContentLoaded', function() {
         loadCharactersBtn.addEventListener('click', loadRandomCharacters);
         loadRandomCharacters();
     }
+
+    // Social sharing functions
+    function shareOnFacebook(content) {
+        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(content)}`;
+        window.open(url, '_blank', 'width=600,height=400');
+    }
+
+    function shareOnInstagram(content) {
+        // Since Instagram doesn't have a direct share URL, copy to clipboard and show instructions
+        navigator.clipboard.writeText(content)
+            .then(() => {
+                showNotification('Content Copied', 'Content copied to clipboard. Open Instagram to paste and share!', true);
+            })
+            .catch(() => showNotification('Error', 'Failed to copy content', false));
+    }
+
+    // Add event listeners for share buttons
+    document.querySelectorAll('[id^="shareFacebook"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const content = btn.closest('.card-body').querySelector('.result-content').textContent;
+            shareOnFacebook(content);
+        });
+    });
+
+    document.querySelectorAll('[id^="shareInstagram"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const content = btn.closest('.card-body').querySelector('.result-content').textContent;
+            shareOnInstagram(content);
+        });
+    });
+
+    // Add instruction selection functionality
+    let availableInstructions = [];
+
+    async function loadInstructions() {
+        try {
+            const response = await fetch('/get_instructions');
+            const data = await response.json();
+            if (response.ok) {
+                availableInstructions = data.instructions;
+                // Update instruction select elements
+                document.querySelectorAll('.describe-btn').forEach(btn => {
+                    const selectHtml = `
+                        <select class="form-select form-select-sm mt-2 instruction-select">
+                            ${availableInstructions.map(i => `
+                                <option value="${i.id}">${i.name}</option>
+                            `).join('')}
+                        </select>
+                    `;
+                    const cardBody = btn.closest('.card-body');
+                    if (!cardBody.querySelector('.instruction-select')) {
+                        cardBody.insertAdjacentHTML('beforeend', selectHtml);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading instructions:', error);
+        }
+    }
+
+    // Load instructions when document is ready
+    loadInstructions();
 });

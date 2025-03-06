@@ -265,24 +265,32 @@ def analyze_image():
     try:
         data = request.get_json()
         image_url = data.get('image_url')
+        instruction_id = data.get('instruction_id')
 
         if not image_url:
             return jsonify({'error': 'No image URL provided'}), 400
 
-        # Create a generic art analysis instruction
-        generic_instruction = AIInstruction(
-            name="Generic Art Analysis",
-            system_prompt="You are an art critic. "
-                        "Analyze the image and provide: "
-                        "1. Art style description "
-                        "2. A creative name for the character "
-                        "3. A brief, engaging story about the character "
-                        "Respond in JSON format with keys: 'style', 'name', 'story', 'character_traits'",
-            user_prompt="Please analyze this artwork:"
-        )
+        # Get instruction if provided, otherwise create a generic one
+        if instruction_id:
+            instruction = AIInstruction.query.get(instruction_id)
+            if not instruction:
+                return jsonify({'error': 'Invalid instruction ID'}), 400
+        else:
+            # Create a generic art analysis instruction
+            instruction = AIInstruction(
+                name="Generic Art Analysis",
+                system_prompt="You are an art critic. "
+                            "Analyze the image and provide: "
+                            "1. Art style description "
+                            "2. A creative name for the character "
+                            "3. A brief, engaging story about the character "
+                            "4. List 3-5 character traits that define this character "
+                            "Respond in JSON format with keys: 'style', 'name', 'story', 'character_traits'",
+                user_prompt="Please analyze this artwork:"
+            )
 
-        # Analyze the artwork using OpenAI with generic instruction
-        analysis = analyze_artwork(image_url, generic_instruction)
+        # Analyze the artwork using OpenAI with instruction
+        analysis = analyze_artwork(image_url, instruction)
 
         return jsonify({
             'success': True,
@@ -291,6 +299,19 @@ def analyze_image():
 
     except Exception as e:
         logger.error(f"Error analyzing image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_instructions', methods=['GET'])
+def get_instructions():
+    """Get all available AI instructions"""
+    try:
+        instructions = AIInstruction.query.all()
+        return jsonify({
+            'success': True,
+            'instructions': [{'id': i.id, 'name': i.name} for i in instructions]
+        })
+    except Exception as e:
+        logger.error(f"Error getting instructions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
