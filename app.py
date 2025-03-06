@@ -259,5 +259,39 @@ def reroll_image(index):
         logger.error(f"Error rerolling image: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/analyze_image', methods=['POST'])
+def analyze_image():
+    """Analyze an image URL without Yorkshire terrier specification"""
+    try:
+        data = request.get_json()
+        image_url = data.get('image_url')
+
+        if not image_url:
+            return jsonify({'error': 'No image URL provided'}), 400
+
+        # Create a generic art analysis instruction
+        generic_instruction = AIInstruction(
+            name="Generic Art Analysis",
+            system_prompt="You are an art critic. "
+                        "Analyze the image and provide: "
+                        "1. Art style description "
+                        "2. A creative name for the character "
+                        "3. A brief, engaging story about the character "
+                        "Respond in JSON format with keys: 'style', 'name', 'story', 'character_traits'",
+            user_prompt="Please analyze this artwork:"
+        )
+
+        # Analyze the artwork using OpenAI with generic instruction
+        analysis = analyze_artwork(image_url, generic_instruction)
+
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+
+    except Exception as e:
+        logger.error(f"Error analyzing image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

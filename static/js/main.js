@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toast = new bootstrap.Toast(document.getElementById('notificationToast'));
     const toastTitle = document.getElementById('toastTitle');
     const toastMessage = document.getElementById('toastMessage');
+    
 
     function showNotification(title, message, success = true) {
         toastTitle.textContent = title;
@@ -20,20 +21,24 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('notificationToast').classList.toggle('bg-danger', !success);
         toast.show();
     }
+    
 
     if (imageForm) {
         imageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             generateBtn.disabled = true;
             generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     body: new FormData(imageForm)
                 });
+    
 
                 const data = await response.json();
+    
 
                 if (response.ok) {
                     generatedContent.textContent = data.caption;
@@ -50,12 +55,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
 
     if (storyForm) {
         storyForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             generateStoryBtn.disabled = true;
             generateStoryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    
 
             try {
                 const formData = new FormData(storyForm);
@@ -63,8 +70,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     body: formData
                 });
+    
 
                 const data = await response.json();
+    
 
                 if (response.ok) {
                     generatedStory.textContent = data.story;
@@ -81,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
 
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
@@ -89,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(() => showNotification('Error', 'Failed to copy text', false));
         });
     }
+    
 
     if (copyStoryBtn) {
         copyStoryBtn.addEventListener('click', () => {
@@ -97,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(() => showNotification('Error', 'Failed to copy story', false));
         });
     }
+    
 
     function createCharacterCard(image, index) {
         return `
@@ -111,12 +123,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                 Character Traits: ${image.character_traits.join(', ')}
                             </small>
                         </p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="btn-group d-flex justify-content-between mt-2">
                             <button class="btn btn-outline-primary btn-sm reroll-btn" data-index="${index}">
-                                <i class="fas fa-dice me-1"></i>Reroll
+                                <i class="fas fa-dice"></i>
+                            </button>
+                            <button class="btn btn-outline-info btn-sm describe-btn" data-url="${image.image_url}">
+                                <i class="fas fa-eye"></i>
                             </button>
                             <button class="btn btn-outline-success btn-sm select-btn" data-id="${image.id}">
-                                <i class="fas fa-check me-1"></i>Select
+                                <i class="fas fa-check"></i>
                             </button>
                         </div>
                     </div>
@@ -124,27 +139,22 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     }
+    
 
     let currentImages = [];
+    
 
     async function loadRandomCharacters() {
         try {
             const response = await fetch('/get_random_images');
             const data = await response.json();
+    
 
             if (response.ok) {
                 currentImages = data.images;
                 const gallery = document.getElementById('characterGallery');
                 gallery.innerHTML = currentImages.map((img, index) => createCharacterCard(img, index)).join('');
-
-                // Add event listeners to the new cards
-                document.querySelectorAll('.reroll-btn').forEach(btn => {
-                    btn.addEventListener('click', handleReroll);
-                });
-
-                document.querySelectorAll('.select-btn').forEach(btn => {
-                    btn.addEventListener('click', handleSelect);
-                });
+                attachEventListeners();
             } else {
                 showNotification('Error', data.error || 'Failed to load characters', false);
             }
@@ -152,28 +162,28 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'An error occurred while loading characters', false);
         }
     }
+    
 
     async function handleReroll(event) {
         const button = event.currentTarget;
         const index = parseInt(button.dataset.index);
         const excludedIds = currentImages.map(img => img.id);
+    
 
         try {
             const params = new URLSearchParams();
             excludedIds.forEach(id => params.append('excluded_ids[]', id));
+    
 
             const response = await fetch(`/reroll_image/${index}?${params.toString()}`);
             const data = await response.json();
+    
 
             if (response.ok) {
                 currentImages[index] = data.image;
                 const cardContainer = button.closest('.character-gallery-col');
                 cardContainer.outerHTML = createCharacterCard(data.image, index);
-
-                // Reattach event listeners
-                const newCard = document.querySelector(`[data-index="${index}"]`).closest('.character-gallery-col');
-                newCard.querySelector('.reroll-btn').addEventListener('click', handleReroll);
-                newCard.querySelector('.select-btn').addEventListener('click', handleSelect);
+                attachEventListeners();
             } else {
                 showNotification('Error', data.error || 'Failed to reroll character', false);
             }
@@ -181,13 +191,16 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'An error occurred while rerolling character', false);
         }
     }
+    
 
     function handleSelect(event) {
         const button = event.currentTarget;
         const imageId = button.dataset.id;
+    
 
         // Update hidden input
         document.getElementById('selectedImageId').value = imageId;
+    
 
         // Update UI to show selection
         document.querySelectorAll('.select-btn').forEach(btn => {
@@ -196,9 +209,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         button.classList.remove('btn-outline-success');
         button.classList.add('btn-success');
+    
 
         showNotification('Success', 'Character selected for the story!', true);
     }
+    
+
+    async function handleDescribe(event) {
+        const button = event.currentTarget;
+        const imageUrl = button.dataset.url;
+    
+
+        button.disabled = true;
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+
+        try {
+            const response = await fetch('/analyze_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image_url: imageUrl })
+            });
+    
+
+            const data = await response.json();
+    
+
+            if (response.ok) {
+                // Find the card and update its content
+                const card = button.closest('.character-card');
+                card.querySelector('.card-title').textContent = data.analysis.name || 'Unnamed Character';
+                card.querySelector('.card-text.small').textContent = data.analysis.style || 'Style not specified';
+                card.querySelector('.text-muted').textContent = 
+                    'Character Traits: ' + (data.analysis.character_traits || []).join(', ');
+    
+
+                showNotification('Success', 'Image analyzed successfully!', true);
+            } else {
+                showNotification('Error', data.error || 'Failed to analyze image', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while analyzing the image', false);
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        }
+    }
+    
+
+    // Add describe button event listeners
+    function attachEventListeners() {
+        document.querySelectorAll('.reroll-btn').forEach(btn => {
+            btn.addEventListener('click', handleReroll);
+        });
+    
+
+        document.querySelectorAll('.describe-btn').forEach(btn => {
+            btn.addEventListener('click', handleDescribe);
+        });
+    
+
+        document.querySelectorAll('.select-btn').forEach(btn => {
+            btn.addEventListener('click', handleSelect);
+        });
+    }
+    
 
     const loadCharactersBtn = document.getElementById('loadCharactersBtn');
     if (loadCharactersBtn) {
