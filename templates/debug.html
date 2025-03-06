@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Visual Novel Story Generator</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="display-4">Debug Console</h1>
+                    <a href="/" class="btn btn-outline-primary">
+                        <i class="fas fa-home me-2"></i>Back to Main
+                    </a>
+                </div>
+
+                <!-- Post Generator Section -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">Post Generator</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="imageForm">
+                            <div class="mb-4">
+                                <label for="imageUrl" class="form-label">
+                                    <i class="fas fa-image me-2"></i>Artwork Image URL
+                                </label>
+                                <input type="url" class="form-control" id="imageUrl" name="image_url" required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="instruction" class="form-label">
+                                    <i class="fas fa-magic me-2"></i>Analysis Style
+                                </label>
+                                <div class="input-group">
+                                    <select class="form-select" id="instruction" name="instruction_id">
+                                        {% for instruction in instructions %}
+                                        <option value="{{ instruction.id }}" {% if instruction.is_default %}selected{% endif %}>
+                                            {{ instruction.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#instructionModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="hashtags" class="form-label">
+                                    <i class="fas fa-hashtag me-2"></i>Hashtag Collection
+                                </label>
+                                <div class="input-group">
+                                    <select class="form-select" id="hashtags" name="hashtag_collection_id">
+                                        {% for collection in hashtag_collections %}
+                                        <option value="{{ collection.id }}" {% if collection.is_default %}selected{% endif %}>
+                                            {{ collection.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#hashtagModal">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary" id="generateBtn">
+                                    <i class="fas fa-magic me-2"></i>Generate Post
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="mt-4" id="result" style="display: none;">
+                            <h4>Generated Instagram Post</h4>
+                            <div class="border rounded p-4 mt-2 result-content" id="generatedContent"></div>
+                            <div class="text-center mt-3">
+                                <button class="btn btn-outline-secondary btn-sm" id="copyBtn">
+                                    <i class="fas fa-copy me-2"></i>Copy to Clipboard
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Explorer -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">Recent Analyses</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Image</th>
+                                        <th>Analysis</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for analysis in analyses %}
+                                    <tr>
+                                        <td>{{ analysis.id }}</td>
+                                        <td>
+                                            <img src="{{ analysis.image_url }}" alt="thumbnail" style="height: 50px;">
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ analysis.analysis_result | tojson }}</small>
+                                        </td>
+                                        <td>{{ analysis.created_at }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Stories -->
+                <div class="card shadow-lg mb-4">
+                    <div class="card-header">
+                        <h3 class="mb-0">Recent Stories</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Setting</th>
+                                        <th>Story</th>
+                                        <th>Created</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for story in stories %}
+                                    <tr>
+                                        <td>{{ story.id }}</td>
+                                        <td>{{ story.setting }}</td>
+                                        <td>
+                                            <small class="text-muted">{{ story.generated_story | tojson }}</small>
+                                        </td>
+                                        <td>{{ story.created_at }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the existing modals for instruction and hashtag management -->
+    {% include 'modals.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -70,21 +70,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function loadRandomCharacters() {
         try {
+            console.log("Loading random characters...");
             const response = await fetch('/get_random_images?count=9');
             const data = await response.json();
-    
+
             if (response.ok) {
                 currentImages = data.images;
+                console.log(`Loaded ${currentImages.length} images from server`);
+
                 characterGallery.innerHTML = currentImages.map((img, index) => createCharacterCard(img, index)).join('');
-                attachEventListeners();
-    
+                console.log(`Created ${characterGallery.children.length} character cards`);
+
                 // Reset selections
                 selectedCharacters.clear();
                 updateSelectionCounter();
+                attachEventListeners();
             } else {
                 showNotification('Error', data.error || 'Failed to load characters', false);
             }
         } catch (error) {
+            console.error('Error in loadRandomCharacters:', error);
             showNotification('Error', 'An error occurred while loading characters', false);
         }
     }
@@ -426,9 +431,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Error', 'An error occurred while saving', false);
         }
     }
-    
-    // Social sharing functions are already defined in the edited code snippet
-    
     
     
 });

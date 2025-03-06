@@ -204,10 +204,11 @@ def generate_story_route():
 
 @app.route('/get_random_images', methods=['GET'])
 def get_random_images():
-    """Get 3 random images from the database with their analysis"""
+    """Get random images from the database with their analysis"""
     try:
-        # Get 3 random images from the database
-        images = ImageAnalysis.query.order_by(db.func.random()).limit(3).all()
+        count = request.args.get('count', default=9, type=int)
+        # Get random images from the database
+        images = ImageAnalysis.query.order_by(db.func.random()).limit(count).all()
 
         image_data = []
         for img in images:
@@ -434,6 +435,23 @@ def manage_hashtags():
     except Exception as e:
         logger.error(f"Error managing hashtags: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# Add debug routes
+@app.route('/debug')
+def debug_page():
+    """Debug page with post generation and database management"""
+    instructions = AIInstruction.query.all()
+    hashtag_collections = HashtagCollection.query.all()
+    analyses = ImageAnalysis.query.order_by(ImageAnalysis.created_at.desc()).limit(10).all()
+    stories = StoryGeneration.query.order_by(StoryGeneration.created_at.desc()).limit(10).all()
+
+    return render_template(
+        'debug.html',
+        instructions=instructions,
+        hashtag_collections=hashtag_collections,
+        analyses=analyses,
+        stories=stories
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

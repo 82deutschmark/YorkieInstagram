@@ -30,7 +30,7 @@ body {
 /* Character gallery */
 .character-gallery-row {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     justify-content: center;
 }
@@ -72,6 +72,19 @@ body {
 .character-card .card-text {
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
+}
+
+/* Make the gallery responsive */
+@media (max-width: 992px) {
+    .character-gallery-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .character-gallery-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Form controls */
@@ -127,19 +140,6 @@ body {
 #selectionCounter {
     font-size: 1rem;
     padding: 0.5rem 1rem;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .character-gallery-row {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    }
-}
-
-@media (max-width: 576px) {
-    .character-gallery-row {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Result content area */

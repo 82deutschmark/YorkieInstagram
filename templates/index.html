@@ -12,10 +12,15 @@
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-md-10">
-                <div class="text-center mb-4">
-                    <i class="fas fa-book-open dog-icon"></i>
-                    <h1 class="display-4">Choose Your Adventure</h1>
-                    <p class="lead">Select up to three characters for your story</p>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="text-center">
+                        <i class="fas fa-book-open dog-icon"></i>
+                        <h1 class="display-4">Choose Your Adventure</h1>
+                        <p class="lead">Select up to three characters for your story</p>
+                    </div>
+                    <a href="/debug" class="btn btn-outline-secondary">
+                        <i class="fas fa-bug me-2"></i>Debug Console
+                    </a>
                 </div>
 
                 <!-- Character Selection -->
@@ -108,82 +113,7 @@
     </div>
 
     <!-- Add modals for managing instructions and hashtags -->
-    <div class="modal fade" id="instructionModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Manage Analysis Style</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="instructionForm">
-                        <div class="mb-3">
-                            <label class="form-label">Name</label>
-                            <input type="text" class="form-control" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">System Prompt</label>
-                            <textarea class="form-control" name="system_prompt" rows="4" required></textarea>
-                            <div class="form-text">Define how the AI should analyze the artwork.</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">User Prompt</label>
-                            <textarea class="form-control" name="user_prompt" rows="2" required></textarea>
-                            <div class="form-text">The prompt to send with each image.</div>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" name="is_default" id="isDefaultInstruction">
-                            <label class="form-check-label" for="isDefaultInstruction">Set as default</label>
-                        </div>
-                    </form>
-                    <div class="mt-4">
-                        <h6>Existing Instructions</h6>
-                        <div class="list-group" id="instructionsList"></div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="saveInstructionBtn">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="hashtagModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Manage Hashtag Collections</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="hashtagForm">
-                        <div class="mb-3">
-                            <label class="form-label">Collection Name</label>
-                            <input type="text" class="form-control" name="name" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Hashtags</label>
-                            <textarea class="form-control" name="hashtags" rows="4" required></textarea>
-                            <div class="form-text">Enter hashtags separated by commas or new lines.</div>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" name="is_default" id="isDefaultHashtags">
-                            <label class="form-check-label" for="isDefaultHashtags">Set as default</label>
-                        </div>
-                    </form>
-                    <div class="mt-4">
-                        <h6>Existing Collections</h6>
-                        <div class="list-group" id="hashtagsList"></div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="saveHashtagsBtn">Save</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% include 'modals.html' %}
 
     <!-- Toast notification -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
