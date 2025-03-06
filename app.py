@@ -314,5 +314,99 @@ def get_instructions():
         logger.error(f"Error getting instructions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/manage/instructions', methods=['GET', 'POST'])
+def manage_instructions():
+    """Manage AI instructions"""
+    try:
+        if request.method == 'POST':
+            data = request.get_json()
+            instruction = AIInstruction(
+                name=data['name'],
+                system_prompt=data['system_prompt'],
+                user_prompt=data['user_prompt'],
+                is_default=data.get('is_default', False)
+            )
+
+            if instruction.is_default:
+                # Unset any existing default
+                AIInstruction.query.filter_by(is_default=True).update({'is_default': False})
+
+            db.session.add(instruction)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'instruction': {
+                    'id': instruction.id,
+                    'name': instruction.name,
+                    'is_default': instruction.is_default
+                }
+            })
+
+        # GET: Return all instructions
+        instructions = AIInstruction.query.all()
+        return jsonify({
+            'success': True,
+            'instructions': [{
+                'id': i.id,
+                'name': i.name,
+                'system_prompt': i.system_prompt,
+                'user_prompt': i.user_prompt,
+                'is_default': i.is_default
+            } for i in instructions]
+        })
+
+    except Exception as e:
+        logger.error(f"Error managing instructions: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/manage/hashtags', methods=['GET', 'POST'])
+def manage_hashtags():
+    """Manage hashtag collections"""
+    try:
+        if request.method == 'POST':
+            data = request.get_json()
+            # Process hashtags string into array
+            hashtags = [tag.strip() for tag in data['hashtags'].replace('\n', ',').split(',')
+                       if tag.strip() and tag.strip().startswith('#')]
+
+            collection = HashtagCollection(
+                name=data['name'],
+                hashtags=hashtags,
+                is_default=data.get('is_default', False)
+            )
+
+            if collection.is_default:
+                # Unset any existing default
+                HashtagCollection.query.filter_by(is_default=True).update({'is_default': False})
+
+            db.session.add(collection)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'collection': {
+                    'id': collection.id,
+                    'name': collection.name,
+                    'is_default': collection.is_default
+                }
+            })
+
+        # GET: Return all collections
+        collections = HashtagCollection.query.all()
+        return jsonify({
+            'success': True,
+            'collections': [{
+                'id': c.id,
+                'name': c.name,
+                'hashtags': c.hashtags,
+                'is_default': c.is_default
+            } for c in collections]
+        })
+
+    except Exception as e:
+        logger.error(f"Error managing hashtags: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

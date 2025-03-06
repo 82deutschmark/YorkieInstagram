@@ -13,6 +13,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const toastTitle = document.getElementById('toastTitle');
     const toastMessage = document.getElementById('toastMessage');
     
+    let instructionModal, hashtagModal;
+    instructionModal = new bootstrap.Modal(document.getElementById('instructionModal'));
+    hashtagModal = new bootstrap.Modal(document.getElementById('hashtagModal'));
+
+    // Load existing instructions and hashtags
+    loadInstructions();
+    loadHashtagCollections();
+
+    // Setup form handlers
+    document.getElementById('saveInstructionBtn').addEventListener('click', saveInstruction);
+    document.getElementById('saveHashtagsBtn').addEventListener('click', saveHashtags);
+
 
     function showNotification(title, message, success = true) {
         toastTitle.textContent = title;
@@ -221,10 +233,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const cardBody = button.closest('.card-body');
         const instructionSelect = cardBody.querySelector('.instruction-select');
         const instructionId = instructionSelect ? instructionSelect.value : null;
+        
 
         button.disabled = true;
         const originalHtml = button.innerHTML;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
 
         try {
             const response = await fetch('/analyze_image', {
@@ -237,8 +251,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     instruction_id: instructionId
                 })
             });
+            
 
             const data = await response.json();
+            
 
             if (response.ok) {
                 const card = button.closest('.character-card');
@@ -246,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 card.querySelector('.card-text.small').textContent = data.analysis.style || 'Style not specified';
                 card.querySelector('.text-muted').textContent = 
                     'Character Traits: ' + (data.analysis.character_traits || []).join(', ');
+                
 
                 showNotification('Success', 'Image analyzed successfully!', true);
             } else {
@@ -283,66 +300,128 @@ document.addEventListener('DOMContentLoaded', function() {
         loadCharactersBtn.addEventListener('click', loadRandomCharacters);
         loadRandomCharacters();
     }
-
-    // Social sharing functions
-    function shareOnFacebook(content) {
-        const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(content)}`;
-        window.open(url, '_blank', 'width=600,height=400');
-    }
-
-    function shareOnInstagram(content) {
-        // Since Instagram doesn't have a direct share URL, copy to clipboard and show instructions
-        navigator.clipboard.writeText(content)
-            .then(() => {
-                showNotification('Content Copied', 'Content copied to clipboard. Open Instagram to paste and share!', true);
-            })
-            .catch(() => showNotification('Error', 'Failed to copy content', false));
-    }
-
-    // Add event listeners for share buttons
-    document.querySelectorAll('[id^="shareFacebook"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const content = btn.closest('.card-body').querySelector('.result-content').textContent;
-            shareOnFacebook(content);
-        });
-    });
-
-    document.querySelectorAll('[id^="shareInstagram"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const content = btn.closest('.card-body').querySelector('.result-content').textContent;
-            shareOnInstagram(content);
-        });
-    });
-
-    // Add instruction selection functionality
-    let availableInstructions = [];
+    
 
     async function loadInstructions() {
         try {
-            const response = await fetch('/get_instructions');
+            const response = await fetch('/manage/instructions');
             const data = await response.json();
+
             if (response.ok) {
-                availableInstructions = data.instructions;
-                // Update instruction select elements
-                document.querySelectorAll('.describe-btn').forEach(btn => {
-                    const selectHtml = `
-                        <select class="form-select form-select-sm mt-2 instruction-select">
-                            ${availableInstructions.map(i => `
-                                <option value="${i.id}">${i.name}</option>
-                            `).join('')}
-                        </select>
-                    `;
-                    const cardBody = btn.closest('.card-body');
-                    if (!cardBody.querySelector('.instruction-select')) {
-                        cardBody.insertAdjacentHTML('beforeend', selectHtml);
-                    }
-                });
+                const list = document.getElementById('instructionsList');
+                list.innerHTML = data.instructions.map(instruction => `
+                    <div class="list-group-item">
+                        <h6>${instruction.name} ${instruction.is_default ? '<span class="badge bg-primary">Default</span>' : ''}</h6>
+                        <small class="text-muted">System Prompt: ${instruction.system_prompt}</small>
+                    </div>
+                `).join('');
+
+                // Update select options
+                const select = document.getElementById('instruction');
+                if (select) {
+                    select.innerHTML = data.instructions.map(i => `
+                        <option value="${i.id}" ${i.is_default ? 'selected' : ''}>
+                            ${i.name}
+                        </option>
+                    `).join('');
+                }
             }
         } catch (error) {
-            console.error('Error loading instructions:', error);
+            showNotification('Error', 'Failed to load instructions', false);
         }
     }
 
-    // Load instructions when document is ready
-    loadInstructions();
+    async function loadHashtagCollections() {
+        try {
+            const response = await fetch('/manage/hashtags');
+            const data = await response.json();
+
+            if (response.ok) {
+                const list = document.getElementById('hashtagsList');
+                list.innerHTML = data.collections.map(collection => `
+                    <div class="list-group-item">
+                        <h6>${collection.name} ${collection.is_default ? '<span class="badge bg-primary">Default</span>' : ''}</h6>
+                        <small class="text-muted">${collection.hashtags.join(' ')}</small>
+                    </div>
+                `).join('');
+
+                // Update select options
+                const select = document.getElementById('hashtags');
+                if (select) {
+                    select.innerHTML = data.collections.map(c => `
+                        <option value="${c.id}" ${c.is_default ? 'selected' : ''}>
+                            ${c.name}
+                        </option>
+                    `).join('');
+                }
+            }
+        } catch (error) {
+            showNotification('Error', 'Failed to load hashtag collections', false);
+        }
+    }
+
+    async function saveInstruction() {
+        const form = document.getElementById('instructionForm');
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/manage/instructions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: formData.get('name'),
+                    system_prompt: formData.get('system_prompt'),
+                    user_prompt: formData.get('user_prompt'),
+                    is_default: formData.get('is_default') === 'on'
+                })
+            });
+
+            if (response.ok) {
+                await loadInstructions();
+                instructionModal.hide();
+                form.reset();
+                showNotification('Success', 'Instruction saved successfully!', true);
+            } else {
+                showNotification('Error', 'Failed to save instruction', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while saving', false);
+        }
+    }
+
+    async function saveHashtags() {
+        const form = document.getElementById('hashtagForm');
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('/manage/hashtags', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: formData.get('name'),
+                    hashtags: formData.get('hashtags'),
+                    is_default: formData.get('is_default') === 'on'
+                })
+            });
+
+            if (response.ok) {
+                await loadHashtagCollections();
+                hashtagModal.hide();
+                form.reset();
+                showNotification('Success', 'Hashtag collection saved successfully!', true);
+            } else {
+                showNotification('Error', 'Failed to save hashtag collection', false);
+            }
+        } catch (error) {
+            showNotification('Error', 'An error occurred while saving', false);
+        }
+    }
+
+    // Social sharing functions are already defined in the edited code snippet
+
+
 });
