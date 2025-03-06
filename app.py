@@ -314,11 +314,35 @@ def get_instructions():
         logger.error(f"Error getting instructions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/manage/instructions', methods=['GET', 'POST'])
+@app.route('/manage/instructions', methods=['GET', 'POST', 'DELETE'])
 def manage_instructions():
     """Manage AI instructions"""
     try:
-        if request.method == 'POST':
+        if request.method == 'DELETE':
+            data = request.get_json()
+            instruction_id = data.get('id')
+            
+            if not instruction_id:
+                return jsonify({'error': 'No instruction ID provided'}), 400
+                
+            instruction = AIInstruction.query.get(instruction_id)
+            if not instruction:
+                return jsonify({'error': 'Instruction not found'}), 404
+                
+            # Don't allow deleting the default instruction
+            if instruction.is_default:
+                return jsonify({'error': 'Cannot delete default instruction'}), 400
+                
+            # Delete the instruction
+            db.session.delete(instruction)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Instruction "{instruction.name}" deleted successfully'
+            })
+            
+        elif request.method == 'POST':
             data = request.get_json()
             instruction = AIInstruction(
                 name=data['name'],
