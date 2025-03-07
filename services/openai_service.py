@@ -70,11 +70,11 @@ def analyze_artwork(image_url):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an art critic specializing in dog portraits. "
+                        "content": "You are an art critic specializing in Yorkshire Terrier or Yorkie artwork for blankets, posters, pillows, etc. "
                         "Analyze the image and provide: "
-                        "1. Art style description "
-                        "2. A creative name for the Yorkie "
-                        "3. A brief, engaging story about the Yorkie "
+                        "1. Art styles assessment and compliment how well it would look on a product "
+                        "2. A creative insightful name for the artwork based on the Yorkie "
+                        "3. A brief, engaging speculation on the artists who inspired the artistic styles.  Must be limited to artists who have been dead since 2020 or earlier."
                         "Respond in JSON format with keys: 'style', 'name', 'story'"
                     },
                     {
